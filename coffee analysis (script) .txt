@@ -1,0 +1,1025 @@
+----- my project
+
+use coffee
+
+select *
+from coffee1
+
+select *
+from coffee1
+where order_id is null or order_date is null or
+`time` is null or quantity is null or store_id is null or
+location is null or product_id is null or price is null or
+category is null or `type` is null or details is null
+
+select concat(
+'select * from coffee1 where ',
+group_concat(concat(column_name, ' is null') separator ' or ')) as sql_query
+from information_schema.columns
+where table_name = 'coffee1'
+
+select *
+from coffee1
+where order_date = ''
+
+--- work time
+select'3' as store_id,  '07:00 to 19:00' as time,
+12 as total_hours
+union
+select'5' as store_id,'06:00 to 20:00' as time,
+14 as total_hours
+union
+select'8' as store_id,'06:00 to 20:00' as time,
+14 as total_hours
+
+
+---- overall about date
+select count(distinct order_date) as total_days_in_dataset,
+count(distinct week(order_date)) as total_weeks_in_dataset,
+count(distinct month(order_date)) as total_months_in_dataset,
+min(order_date) as first_date,
+max(order_date) as last_date
+from coffee1
+
+
+
+---- overall about woek
+
+select count(distinct order_date) as total_days_in_dataset,
+count(distinct week(order_date)) as total_weeks_in_dataset,
+count(distinct month(order_date)) as total_months_in_dataset,
+min(order_date) as first_date,
+max(order_date) as last_date
+from coffee1
+    
+    
+------ total
+
+select ROUND(SUM(price * quantity), 1) AS total_revenue
+from coffee1
+
+
+select COUNT(DISTINCT order_id) AS total_orders
+from coffee1
+
+
+select SUM(quantity) AS total_quantity
+from coffee1
+
+
+select COUNT(DISTINCT product_id) AS total_products
+from coffee1
+
+
+select COUNT(DISTINCT store_id) AS total_stores
+from coffee1
+
+--- avg 
+
+select round(avg(price),2) avg_price
+from coffee1
+
+select round(sum(price * quantity) / count(order_id),2) as avg_per_order
+from coffee1
+
+select coalesce(store_id,'overall_avg_monthly') as store_id,
+round(sum(price * quantity) / 12 )as avg_revenue_monthly
+from coffee1
+group by store_id with rollup
+order by avg_revenue_monthly
+ 
+
+with monthlyrevenue as (select year(order_date) as year,
+month(order_date) as month,
+round(sum(price * quantity), 2) as total_monthly_revenue
+from coffee1
+group by year,month)
+select coalesce(cast(year as char), 'overall average') as year,
+coalesce(cast(month as char), 'total') as month,
+round(avg(total_monthly_revenue), 2) as average_monthly_revenue,
+case when avg(total_monthly_revenue) > (select avg(total_monthly_revenue) from monthlyrevenue) then 'high'
+when avg(total_monthly_revenue) < (select avg(total_monthly_revenue) from monthlyrevenue) then 'low'
+else 'on average'end as performance
+from monthlyrevenue
+group by year,month with rollup
+order by year,month 
+
+
+
+--- total monthly revenue
+select year(order_date) as year, month(order_date) as month,
+round(sum(price * quantity), 2) as total_monthly_revenue
+from coffee1
+group by year, month
+order by year, month
+
+
+select coalesce(store_id,'overall_avg_day') as store_id,
+round(sum(price * quantity) / 365 )as avg_revenue_daily
+from coffee1
+group by store_id with rollup
+order by avg_revenue_daily
+
+
+---- avg daily revenue
+
+select'highest revenue day' as performance_type,
+order_date, total_daily_revenue,
+(select round(avg(total_daily_revenue), 2) 
+from (select sum(price * quantity) as total_daily_revenue 
+from coffee1 group by order_date) as avg_daily_revenues) 
+as overall_avg_daily_revenue
+from (select order_date,sum(price * quantity) as total_daily_revenue
+from coffee1 group by order_date
+order by total_daily_revenue desc
+limit 1) as best_day
+union all
+select'lowest revenue day' as performance_type,
+order_date,total_daily_revenue,
+(select round(avg(total_daily_revenue), 2) 
+from (select sum(price * quantity) as total_daily_revenue 
+from coffee1 group by order_date) as avg_daily_revenues) 
+as overall_avg_daily_revenue
+from (select order_date,sum(price * quantity) as total_daily_revenue
+from coffee1 group by order_date order by total_daily_revenue asc
+limit 1) as worst_day
+
+
+
+
+
+select year(order_date) as year, month(order_date) as month,
+round(sum(price * quantity), 2) as total_monthly_revenue
+from coffee1
+group by year, month
+order by total_monthly_revenue
+
+
+select coalesce(store_id,'overall_avg_day') as store_id,
+round(sum(price * quantity) / COUNT(DISTINCT DATE(order_date)), 2)as avg_revenue_daily
+from coffee1
+group by store_id with rollup
+order by avg_revenue_daily
+
+
+with quarterlyrevenue as (select quarter(order_date) as quarter,
+round(sum(price * quantity), 2) as total_quarterly_revenue
+from coffee1
+group by quarter )
+select round(avg(total_quarterly_revenue), 2) as average_quarterly_revenue
+from quarterlyrevenue
+
+---- avg for all quarters
+
+with quarterlyrevenue as (select store_id,quarter(order_date) as quarter,
+round(sum(price * quantity), 2) as total_quarterly_revenue
+from coffee1
+group by store_id,quarter)
+select store_id,
+round(avg(total_quarterly_revenue), 2) as average_quarterly_revenue
+from quarterlyrevenue
+group by store_id
+order by average_quarterly_revenue desc
+
+select quarter(order_date) as quarter,
+round(sum(price * quantity), 2) as total_quarterly_revenue
+from coffee1
+group by quarter
+order by quarter
+
+select store_id,quarter(order_date) as quarter,
+round(sum(price * quantity), 2) as total_quarterly_revenue
+from coffee1
+group by quarter, store_id
+order by total_quarterly_revenue desc
+
+--- avg for orders
+
+select round(avg(total_quarterly_orders), 2) as avg_quarterly_orders,
+round(avg(total_monthly_orders), 2) as avg_monthly_orders,
+round(avg(total_weekly_orders), 2) as avg_weekly_orders,
+round(avg(total_daily_orders), 2) as avg_daily_orders
+from (select year(order_date) as year,quarter(order_date) as quarter,
+count(order_id) as total_quarterly_orders from coffee1
+group by year, quarter) as quarterly_orders,(select year(order_date) as year,
+month(order_date) as month,count(order_id) as total_monthly_orders
+from coffee1 group by year, month) as monthly_orders,(select year(order_date) as year,
+week(order_date) as week,count(order_id) as total_weekly_orders from coffee1
+group by year, week) as weekly_orders,(select order_date,count(order_id) as total_daily_orders
+from coffee1 group by order_date) as daily_orders
+
+
+select store_id,
+count(order_id) / count(distinct order_date) as avg_orders_per_day
+from coffee1
+group by store_id
+order by avg_orders_per_day desc
+
+
+---- avd hourly
+
+select hour(time) as hour_of_day,
+round(avg(total_orders_per_hour), 2) as avg_orders_per_hour,
+round(avg(total_revenue_per_hour), 2) as avg_revenue_per_hour
+from (select time,count(order_id) as total_orders_per_hour,
+sum(price * quantity) as total_revenue_per_hour
+from coffee1 group by time) as hourly_data
+group by hour_of_day order by hour_of_day
+
+
+--- avg the revenues for one store
+
+select coalesce(store_id, 'overall average') as store_id,
+round(avg(price * quantity), 2) as avg_revenue_per_order
+from coffee1
+group by store_id with rollup 
+
+
+select coalesce(store_id, 'overall average') as store_id,
+round(sum(quantity) / count(order_id), 2) as avg_quantity_per_order
+from coffee1
+group by store_id with rollup
+
+
+
+
+
+--- avg for all time revenue
+
+select daily_avg.store_id,
+round(daily_avg.avg_daily_revenue, 2) as avg_daily_revenue,
+round(weekly_avg.avg_weekly_revenue, 2) as avg_weekly_revenue,
+round(monthly_avg.avg_monthly_revenue, 2) as avg_monthly_revenue,
+round(quarterly_avg.avg_quarterly_revenue, 2) as avg_quarterly_revenue
+from (select store_id,avg(total_daily_revenue) as avg_daily_revenue
+from (select store_id,order_date,sum(price * quantity) as total_daily_revenue
+from coffee1 group by store_id, order_date) as daily_revenues 
+group by store_id) as daily_avg left join (select store_id,
+avg(total_weekly_revenue) as avg_weekly_revenue from (select store_id,
+year(order_date) as year,week(order_date) as week,sum(price * quantity) 
+as total_weekly_revenue from coffee1 group by store_id, year, week) as weekly_revenues
+group by store_id) as weekly_avg on daily_avg.store_id = weekly_avg.store_id
+left join (select store_id,avg(total_monthly_revenue) as avg_monthly_revenue
+from (select store_id,year(order_date) as year,month(order_date) as month,
+sum(price * quantity) as total_monthly_revenue from coffee1
+group by store_id, year, month) as monthly_revenues group by store_id) 
+as monthly_avg on daily_avg.store_id = monthly_avg.store_id
+left join (select store_id,avg(total_quarterly_revenue) as avg_quarterly_revenue
+from (select store_id,year(order_date) as year,quarter(order_date) as quarter,
+sum(price * quantity)as total_quarterly_revenue from coffee1 group by 
+store_id, year, quarter) as quarterly_revenues group by store_id) as quarterly_avg
+on daily_avg.store_id = quarterly_avg.store_id order by daily_avg.store_id
+
+---- avg for all time order
+
+SELECT daily_avg.store_id, 
+ROUND(daily_avg.avg_daily_orders, 2) as avg_daily_orders, 
+ROUND(weekly_avg.avg_weekly_orders, 2) as avg_weekly_orders, 
+ROUND(monthly_avg.avg_monthly_orders, 2) as avg_monthly_orders, 
+ROUND(quarterly_avg.avg_quarterly_orders, 2) as avg_quarterly_orders 
+FROM (SELECT store_id, avg(total_daily_orders) as avg_daily_orders 
+from (select store_id,order_date,count(*) as total_daily_orders 
+from coffee1 group by store_id, order_date) as daily_orders 
+group by store_id) as daily_avg left join (select store_id, 
+avg(total_weekly_orders) as avg_weekly_orders from (select store_id, 
+year(order_date) as year, week(order_date) as week, count(*) as 
+total_weekly_orders from coffee1 group by store_id, year, week) as weekly_orders 
+group by store_id) as weekly_avg on daily_avg.store_id = weekly_avg.store_id 
+left join (select store_id, avg(total_monthly_orders) as avg_monthly_orders 
+from (select store_id, year(order_date) as year, month(order_date) as month, 
+count(*) as total_monthly_orders from coffee1 group by store_id, year, month) 
+as monthly_orders group by store_id) as monthly_avg on daily_avg.store_id
+= monthly_avg.store_id left join (select store_id, avg(total_quarterly_orders) 
+as avg_quarterly_orders from (select store_id, year(order_date) as year, 
+quarter(order_date) as quarter,count(*) as total_quarterly_orders from coffee1 
+group by store_id, year, quarter) as quarterly_orders group by store_id) as quarterly_avg 
+on daily_avg.store_id = quarterly_avg.store_id order by daily_avg.store_id
+
+
+  ----- avg for all time quantity 
+    
+select round(daily_avg.avg_daily_quantity,2) as avg_daily_quantity,
+round(weekly_avg.avg_weekly_quantity,2) as avg_weekly_quantity,
+round(monthly_avg.avg_monthly_quantity,2) as avg_monthly_quantity,
+round(quarterly_avg.avg_quarterly_quantity,2) as avg_quarterly_quantity
+from (select avg(total_daily_quantity) as avg_daily_quantity
+from (select order_date,sum(quantity) as total_daily_quantity
+from coffee1 group by order_date) as daily_quantities) as daily_avg
+left join (select avg(total_weekly_quantity) as avg_weekly_quantity
+from (select year(order_date) as year,week(order_date) as week,sum(quantity)
+as total_weekly_quantity from coffee1 group by year,week) as weekly_quantities)
+as weekly_avg on 1=1 left join (select avg(total_monthly_quantity) as avg_monthly_quantity
+from (select year(order_date) as year,month(order_date) as month,sum(quantity)
+as total_monthly_quantity from coffee1 group by year,month) as monthly_quantities)
+as monthly_avg on 1=1 left join (select avg(total_quarterly_quantity) as avg_quarterly_quantity
+from (select year(order_date) as year,quarter(order_date) as quarter,sum(quantity)
+as total_quarterly_quantity from coffee1 group by year,quarter)
+as quarterly_quantities) as quarterly_avg on 1=1
+
+---- avg all time quantity for stotes
+
+select daily_avg.store_id, round(daily_avg.avg_daily_quantity,2) as avg_daily_quantity,
+round(weekly_avg.avg_weekly_quantity,2) as avg_weekly_quantity,
+round(monthly_avg.avg_monthly_quantity,2) as avg_monthly_quantity,
+round(quarterly_avg.avg_quarterly_quantity,2) as avg_quarterly_quantity
+from (select store_id,avg(total_daily_quantity) as avg_daily_quantity
+from (select store_id,order_date,sum(quantity) as total_daily_quantity
+from coffee1 group by store_id,order_date) as daily_quantities group by store_id)
+as daily_avg left join (select store_id,avg(total_weekly_quantity) as avg_weekly_quantity
+from (select store_id,year(order_date) as year,week(order_date) as week,sum(quantity)
+as total_weekly_quantity from coffee1 group by store_id,year,week) as weekly_quantities
+group by store_id) as weekly_avg on daily_avg.store_id=weekly_avg.store_id
+left join (select store_id,avg(total_monthly_quantity) as avg_monthly_quantity
+from (select store_id,year(order_date) as year,month(order_date) as month,sum(quantity)
+as total_monthly_quantity from coffee1 group by store_id,year,month) as monthly_quantities
+group by store_id) as monthly_avg on daily_avg.store_id=monthly_avg.store_id left join
+(select store_id,avg(total_quarterly_quantity) as avg_quarterly_quantity from
+(select store_id,year(order_date) as year,quarter(order_date) as quarter,
+sum(quantity) as total_quarterly_quantity from coffee1 group by store_id,year,quarter)
+as quarterly_quantities group by store_id) as quarterly_avg
+on daily_avg.store_id=quarterly_avg.store_id order by daily_avg.store_id
+
+
+
+ ----- avg overall avg
+
+
+with monthly_data as(select year(order_date) as year,
+month(order_date) as month,round(sum(price*quantity),2)
+as total_monthly_revenue,count(order_id) as total_monthly_orders
+from coffee1 group by year,month)select coalesce
+(cast(year as char),'overall average') as year,
+coalesce(cast(month as char),'total') as month,
+round(avg(total_monthly_revenue),2) as average_monthly_revenue,
+round(avg(total_monthly_orders),2) as average_monthly_orders,
+case when avg(total_monthly_revenue) > (select avg(total_monthly_revenue)
+from monthly_data) then 'high' when avg(total_monthly_revenue) <
+(select avg(total_monthly_revenue) from monthly_data)
+then 'low' else 'on average'end as performance_by_revenue
+from monthly_data group by year,month with rollup order by year,month
+
+
+with monthly_data as (select year(order_date) as year,month(order_date)
+as month,sum(price*quantity) as total_monthly_revenue,count(order_id)
+as total_monthly_orders from coffee1 group by year,month)select year,month,
+round(avg(total_monthly_revenue),2) as average_monthly_revenue,
+round(avg(total_monthly_orders),2) as average_monthly_orders from monthly_data
+group by year,month having avg(total_monthly_revenue)>=(select
+avg(total_monthly_revenue) from monthly_data) order by average_monthly_revenue desc
+
+
+
+select category, round(sum(quantity) / count(order_id),2) as avg_quantity_for_category
+from coffee1
+group by category order by avg_quantity_for_category desc
+
+
+
+select category, round(sum(quantity) / 12,2) as avg_quantity_for_category
+from coffee1
+group by category order by avg_quantity_for_category desc
+
+
+
+select product_id, round(sum(price * quantity) / count(order_id),2) as avg_quantity_for_product
+from coffee1
+group by product_id order by avg_quantity_for_product desc
+
+
+
+select coalesce(store_id,'totals')as store_id ,
+count(order_id) as total_orders,
+sum(quantity) as total_quantity,
+round(sum(price * quantity ),1) as total_revenue
+from coffee1
+group by store_id with rollup
+order by total_revenue
+
+
+
+
+---- avg quarterly
+
+select round(avg(total_quarterly_revenue), 2) as avg_quarterly_revenue,
+round(avg(total_monthly_revenue), 2) as avg_monthly_revenue,
+round(avg(total_weekly_revenue), 2) as avg_weekly_revenue,
+round(avg(total_daily_revenue), 2) as avg_daily_revenue
+from (select year(order_date) as year,
+quarter(order_date) as quarter,sum(price * quantity) as total_quarterly_revenue
+from coffee1 group by year, quarter) as quarterly_revenues,
+(select year(order_date) as year,month(order_date) as month,
+sum(price * quantity) as total_monthly_revenue from coffee1
+group by year, month) as monthly_revenues,(select year(order_date) as year,
+week(order_date) as week,sum(price * quantity) as total_weekly_revenue
+from coffee1 group by year, week) as weekly_revenues,(select order_date,
+sum(price * quantity) as total_daily_revenue from coffee1 
+group by order_date) as daily_revenues
+
+----- avg price per item
+
+select round(avg(price), 2) as avg_price_per_item,
+round(avg(quantity), 2) as avg_quantity_per_order,
+round(avg(price * quantity), 2) as avg_revenue_per_order
+from coffee1
+
+--- overall_avg_orders_per_hour
+
+select round(avg(total_orders_per_hour), 2) as overall_avg_orders_per_hour,
+round(avg(total_revenue_per_hour), 2) as overall_avg_revenue_per_hour
+from (select time,count(order_id) as total_orders_per_hour,
+sum(price * quantity) as total_revenue_per_hour
+from coffee1 group by time) as hourly_data
+
+---- avg all stores with overall
+
+select coalesce(store_id,'overall_avg')as store_id ,
+count(order_id) as total_orders,
+sum(quantity) as total_quantites,
+round(sum(price * quantity) / 365,2) as avg_day
+from coffee1
+group by store_id with rollup
+order by total_orders
+
+select coalesce(category,'overall_avg')as category ,
+count(order_id) as total_orders,
+sum(quantity) as total_quantites,
+round(sum(price * quantity) / count(order_id),2) as avg_revenues
+from coffee1
+group by category with rollup
+order by total_orders
+
+
+select coalesce(category,'totals')as category ,
+count(order_id) as total_orders,
+sum(quantity) as total_quantity,
+round(sum(price * quantity ),1) as total_revenue
+from coffee1
+group by category with rollup
+order by total_revenue
+
+
+---- with filtar
+
+select coalesce(category,'totals')as category ,
+count(order_id) as total_orders,
+sum(quantity) as total_quantites,
+round(sum(price * quantity ),1) as total_revenues
+from coffee1
+where store_id like 3
+group by category with rollup
+
+
+select coalesce(category,'totals')as category ,
+count(order_id) as total_orders,
+sum(quantity) as total_quantites,
+round(sum(price * quantity ),1) as total_revenues
+from coffee1
+where category like 'flavours'
+group by category
+
+
+select coalesce(category,'totals')as category ,
+count(order_id) as total_orders,
+sum(quantity) as total_quantity,
+round(sum(price * quantity ),1) as total_revenue
+from coffee1
+where store_id = 5
+group by category with rollup
+order by total_revenue
+
+
+select store_id,coalesce(category,'totals')as category ,
+count(order_id) as total_orders,
+sum(quantity) as total_quantites,
+round(sum(price * quantity ),1) as total_revenues
+from coffee1
+where category in ('Coffee beans') and store_id in (5,8)
+group by store_id, category
+
+
+
+ --- best 3 months revenue
+ 
+select month(order_date) as month,
+round(sum(price * quantity), 2) as total_monthly_revenue
+from coffee1
+group by month
+order by total_monthly_revenue desc
+limit 3
+
+select distinct c1.details,c1.category, c1.price ,c2.total_orders ,c2. total_quantity, c2.total_revenues
+from coffee1 c1
+join  (select details,count(order_id)as total_orders, sum(quantity) as total_quantity,
+round(sum(price * quantity ),1) as total_revenues
+from coffee1
+group by details ) c2
+on c1.details = c2.details
+where price > 18
+order by price desc
+
+---- add category or type
+
+select product_id,count(order_id) as total_orders , sum(price * quantity) as total_revenues
+from coffee1
+group by product_id
+order by total_orders desc
+limit 5
+
+---- you can add (asc) for low 
+select store_id stores , category,type, count(*) as total_orders , round (sum(price * quantity),1) total_revenues
+from coffee1
+group by store_id  ,category,type
+order by total_orders desc
+limit 8
+
+
+select coalesce(product_id,'totals')as product ,
+count(order_id) as total_orders,
+sum(quantity) as total_quantites,
+round(sum(price * quantity ),1) as total_revenues
+from coffee1
+group by  product_id with rollup
+order by total_revenues
+
+---- add store number 
+
+select dayofweek(order_date) day_of_week , count( order_id) total_orders ,
+round(sum(price * quantity ),1) as total_revenues
+from coffee1
+group by day_of_week
+order by total_orders desc
+
+
+select dayofweek(order_date) day_of_week , count( order_id) total_orders ,
+round(sum(price * quantity ),1) as total_revenues
+from coffee1
+where store_id = 8
+group by day_of_week
+order by total_orders desc
+
+
+select dayofweek(order_date) day_of_week , (count( order_id)/181)  total_orders ,
+round(sum(price * quantity ) / 181,1) as avg_dialy_revenue
+from coffee1
+group by day_of_week
+order by total_orders desc
+
+
+select dayofweek(order_date) day_of_week , round(count( order_id)/181,2)  avg_orders ,
+round(sum(price * quantity ) / 181,1) as avg_dialy_revenue
+from coffee1
+where store_id = 8
+group by day_of_week
+order by avg_dialy_revenue  desc
+
+
+---- add store number
+
+select dayofweek(order_date) day_of_week , count( order_id) total_orders ,
+round(sum(price * quantity ),1) as total_revenues
+from coffee1
+where store_id = 5
+group by day_of_week
+order by total_orders desc
+
+
+
+select case dayofweek(order_date)
+when 1 then 'sunday' when 2 then 'monday'
+when 3 then 'tuesday' when 4 then 'wednesday' when 5 then 'thursday'
+when 6 then 'friday' when 7 then 'saturday'
+end as day_of_week,count(order_id) as total_orders
+from coffee1
+group by day_of_week
+order by total_orders desc
+
+
+select store_id,case dayofweek(order_date)
+when 1 then 'sunday' when 2 then 'monday'
+when 3 then 'tuesday' when 4 then 'wednesday' when 5 then 'thursday'
+when 6 then 'friday' when 7 then 'saturday'
+end as day_of_week,count(order_id) as total_orders
+from coffee1
+where store_id = 8
+group by day_of_week , store_id
+order by total_orders desc
+
+
+
+
+---- work time
+
+select store_id,hour(time) hour_of_day , count(order_id) total_orders
+from coffee1
+where store_id = 3
+group by hour_of_day , store_id
+order by total_orders desc
+
+select store_id,hour(time) hour_of_day , count(order_id) total_orders
+from coffee1
+group by hour_of_day , store_id
+order by store_id,total_orders desc
+
+
+select hour(time) hour_of_day , count(order_id) total_orders,
+round(sum(price*quantity),2) total_revenue
+from coffee1
+group by hour_of_day 
+order by total_revenue desc
+
+select store_id, hour(time) hour_of_day , count(order_id) total_orders,
+round(sum(price*quantity),2) total_revenue
+from coffee1
+where hour(time) in (10 ,9 , 8)
+group by hour_of_day , store_id
+order by hour_of_day 
+
+
+----- total weekly revenue
+
+select year(order_date) as year,
+week(order_date) as week_number,
+round(sum(price * quantity), 2) as total_weekly_revenue
+from coffee1
+group by year,week_number
+order by week_number 
+
+----- best 3 product in best hour 
+select category,
+count(order_id) as total_orders,
+sum(quantity) as total_quantity,
+round(sum(price * quantity), 2) as total_revenue
+from coffee1
+where hour(time) in (8, 9, 10)
+group by category
+order by total_revenue desc
+limit 5
+
+
+select product_id,
+count(order_id) as total_orders,
+sum(quantity) as total_quantity,
+round(sum(price * quantity), 2) as total_revenue
+from coffee1
+where hour(time) in (19, 6, 20)
+group by product_id
+order by total_revenue desc
+limit 5
+
+
+---- one price to last price
+
+(select'most expensive' as price_category,
+product_id,price from coffee1
+order by price desc limit 1)
+union all
+(select'least expensive' as price_category,
+product_id,price from coffee1
+order by price asc limit 1)
+
+(with quarterlycategoryperformance as (select quarter(order_date)
+as quarter, category, count(order_id) as total_orders, round(sum(price * quantity), 2)
+as total_revenue from coffee1 where quarter(order_date) = 1 group by quarter, category)
+, rankedquarterlycategories as (select *, rank() over (order by total_orders desc, total_revenue desc)
+as quarter_rank from quarterlycategoryperformance) select quarter, category, total_orders, total_revenue
+from rankedquarterlycategories where quarter_rank <= 3 order by total_orders desc)
+union all 
+(with quarterlycategoryperformance as (select quarter(order_date)
+as quarter, category, count(order_id) as total_orders, round(sum(price * quantity), 2)
+as total_revenue from coffee1 where quarter(order_date) = 1 group by quarter, category)
+, rankedquarterlycategories as (select *, rank() over (order by total_orders asc, total_revenue asc)
+as quarter_rank from quarterlycategoryperformance) select quarter, category, total_orders, total_revenue
+from rankedquarterlycategories where quarter_rank <= 3 order by total_orders asc)
+
+
+select category,
+count(order_id) as total_orders,
+sum(quantity) as total_quantity,
+round(sum(price * quantity), 2) as total_revenue
+from coffee1
+where hour(time) in (19, 6, 20)
+group by category
+order by total_revenue desc
+limit 5
+
+
+select store_id,round(avg(price * quantity),2) avg_stores ,
+(select round(avg(price * quantity),1) from coffee1 where quantity >3 )as avg_revenues
+from coffee1
+where quantity >3
+group by store_id
+order by avg_stores
+
+
+----- top 5 product loww product orders
+
+(select product_id,count(order_id) as total_orders,
+sum(quantity) as total_quantites
+from coffee1
+group by product_id
+order by total_orders desc
+limit 5)
+union all
+(select product_id,count(order_id) as total_orders,
+sum(quantity) as total_quantites
+from coffee1
+group by product_id
+order by total_orders asc
+limit 5)
+
+
+----- top 5 product loww product revenue
+
+(select product_id,count(order_id) as total_orders, 
+sum(price * quantity) as total_revenue
+from coffee1
+group by product_id
+order by total_revenue desc
+limit 5)
+union all
+(select product_id,count(order_id) as total_orders, 
+sum(price * quantity) as total_revenue
+from coffee1
+group by product_id
+order by total_revenue asc
+limit 5)
+
+---- where sales_rank <= 3 top
+
+with productsalesbyperiod as (select product_id,category,type,
+case when hour(time) between 5 and 11 then 'morning'
+when hour(time) between 12 and 17 then 'afternoon'
+when hour(time) between 18 and 20 then 'evening'
+end as time_period,sum(quantity) as total_sales_period
+from coffee1
+group by product_id,category,`type`, time_period),
+rankedsales as (select product_id,category,`type`,time_period,total_sales_period,
+rank() over (partition by time_period order by total_sales_period desc) as sales_rank
+from productsalesbyperiod)
+select time_period,product_id,category,`type`,total_sales_period
+from rankedsales
+where sales_rank <= 3
+order by total_sales_period desc
+
+---- where sales_rank <= 3  low
+
+with productsalesbyperiod as (select product_id,category,type,
+case when hour(time) between 5 and 11 then 'morning'
+when hour(time) between 12 and 17 then 'afternoon'
+when hour(time) between 18 and 20 then 'evening'
+end as time_period,sum(quantity) as total_sales_period
+from coffee1
+group by product_id,category,`type`, time_period),
+rankedsales as (select product_id,category,`type`,time_period,total_sales_period,
+rank() over (partition by time_period order by total_sales_period asc) as sales_rank
+from productsalesbyperiod)
+select time_period,product_id,category,`type`,total_sales_period
+from rankedsales
+where sales_rank <= 3
+order by total_sales_period desc
+
+
+
+
+select store_id,
+case when hour(time) >= 6 and hour(time) < 13 then 'shift 1 (6:00 am to 13:00 pm)'
+when hour(time) >= 13 and hour(time) <= 20 then 'shift 2 (13:00 pm to 20:00 pm)'
+end as employee_shift, count(order_id) as total_orders
+from coffee1
+group by store_id , employee_shift
+order by total_orders desc
+
+
+
+
+select year(order_date) year , quarter(order_date) as quarter
+,round(sum(price * quantity),2) total_revenues
+from coffee1
+group by year , quarter
+order by total_revenues desc
+
+
+select store_id,year(order_date) year , quarter(order_date) as quarter
+,round(sum(price * quantity),2) total_revenues
+from coffee1
+where quarter(order_date) = 2
+group by store_id, year , quarter
+order by total_revenues desc
+
+
+select year(order_date) year , month(order_date) as month
+,round(sum(price * quantity),2) total_revenues
+from coffee1
+group by year , month
+order by total_revenues desc
+
+--- high revenue
+
+with monthlyrevenue as (select store_id, year(order_date) as year, month(order_date) as month,
+round(sum(price * quantity), 2) as total_revenue
+from coffee1 group by store_id, year(order_date), month(order_date)),
+rankedmonths as (select store_id, year, month, total_revenue,
+rank() over (partition by store_id order by total_revenue desc) as month_rank from monthlyrevenue)
+select store_id, year, month, total_revenue
+from rankedmonths where month_rank <= 3
+order by store_id, month_rank
+
+---- low revenue
+
+with monthlyrevenue as (select store_id, year(order_date) as year, month(order_date) as month,
+round(sum(price * quantity), 2) as total_revenue
+from coffee1 group by store_id, year(order_date), month(order_date)),
+rankedmonths as (select store_id, year, month, total_revenue,
+rank() over (partition by store_id order by total_revenue asc) as month_rank from monthlyrevenue)
+select store_id, year, month, total_revenue
+from rankedmonths where month_rank <= 2
+order by store_id, month_rank
+
+
+---- the best product in month
+
+with rankedmonths as (select store_id,year(order_date) as year,month(order_date) as month,
+rank() over (partition by store_id order by sum(price * quantity) desc) as month_rank
+from coffee1
+group by store_id,year(order_date),month(order_date)),
+topmonthssales as (select t1.* from coffee1 as t1  join
+rankedmonths as t2 on t1.store_id = t2.store_id
+and year(t1.order_date) = t2.year and month(t1.order_date) = t2.month
+where t2.month_rank <= 3),
+rankedproducts as (select store_id,year(order_date) as year,month(order_date) as month,
+product_id,category,`type`,sum(quantity) as total_sales,
+rank() over (partition by store_id, year(order_date), month(order_date) order by sum(quantity) desc) as product_rank
+from topmonthssales
+group by store_id,year(order_date),month(order_date),product_id,category,`type`)
+select store_id, year, month,product_id,category,`type`,total_sales from rankedproducts
+where product_rank <= 1
+order by store_id,year,month,total_sales desc
+
+
+
+
+
+---- growth
+
+with monthlyrevenue as (select year(order_date) as year,
+month(order_date) as month,round(sum(price * quantity), 2) 
+as total_monthly_revenue from coffee1 group by year,month)
+select year,month,total_monthly_revenue,lag(total_monthly_revenue, 1) 
+over (order by year, month) as previous_month_revenue,round(
+(total_monthly_revenue - lag(total_monthly_revenue, 1) over 
+(order by year, month)) /lag(total_monthly_revenue, 1) over 
+(order by year, month) * 100,2) as growth_percentage
+from monthlyrevenue order by year,month
+
+
+with monthlyrevenue as (select store_id,year(order_date) as year,
+month(order_date) as month,round(sum(price * quantity), 2) as total_monthly_revenue
+from coffee1
+group by store_id,year,month)
+select store_id,year,month,total_monthly_revenue,
+lag(total_monthly_revenue, 1) over (partition by store_id order by year, month) as previous_month_revenue,
+round((total_monthly_revenue - lag(total_monthly_revenue, 1) over (partition by store_id order by year, month)) /
+lag(total_monthly_revenue, 1) over (partition by store_id order by year, month) * 100, 2) as growth_percentage
+from monthlyrevenue
+order by store_id,year,month
+
+
+
+with quarterlyrevenues as (select store_id,quarter(order_date) as quarter ,
+round(sum(price * quantity), 2) as total_quarterly_revenues
+from coffee1
+group by store_id,quarter)
+select store_id,quarter,total_quarterly_revenues,
+lag(total_quarterly_revenues, 1) over (partition by store_id order by quarter) as previous_quarterly_revenues,
+round((total_quarterly_revenues - lag(total_quarterly_revenues, 1) over (partition by store_id order by quarter)) /
+lag(total_quarterly_revenues, 1) over (partition by store_id order by quarter) * 100, 2) as growth_percentage
+from quarterlyrevenues
+order by store_id,quarter
+
+with quarterlyrevenues as (select quarter(order_date) as quarter ,
+round(sum(price * quantity), 2) as total_quarterly_revenues
+from coffee1
+group by quarter)
+select quarter,total_quarterly_revenues,
+lag(total_quarterly_revenues, 1) over (order by quarter) as previous_quarterly_revenues,
+round((total_quarterly_revenues - lag(total_quarterly_revenues, 1) over (order by quarter)) /
+lag(total_quarterly_revenues, 1) over (order by quarter) * 100, 2) as growth_percentage
+from quarterlyrevenues
+order by quarter
+
+
+--------- best product sales in stores
+
+with productperformance as (select store_id,
+product_id,count(order_id) as total_orders,
+round(sum(price * quantity), 2) as total_revenue
+from coffee1 group by store_id,product_id),
+rankedproducts as (select *,rank() over(
+partition by store_id order by total_orders desc, 
+total_revenue desc) as sales_rank from
+productperformance)select store_id,product_id, 
+total_orders,total_revenue from rankedproducts
+where sales_rank <= 3 order by store_id,
+total_orders desc
+
+
+----- best product in quarterly
+
+WITH QuarterlyProductPerformance AS (SELECT QUARTER(order_date) 
+AS quarter, product_id, COUNT(order_id) AS total_orders, 
+ROUND(SUM(price * quantity), 2) AS total_revenue FROM coffee1 GROUP BY quarter, product_id)
+, RankedQuarterlyProducts AS (SELECT *, RANK() OVER (PARTITION BY quarter ORDER by
+total_orders DESC, total_revenue DESC) AS quarter_rank FROM QuarterlyProductPerformance)
+SELECT quarter, product_id, total_orders, total_revenue FROM RankedQuarterlyProducts WHERE 
+quarter_rank = 1 ORDER BY quarter
+
+
+---- monthly 
+
+with monthlyproductperformance as (select year(order_date)
+as year, month(order_date) as month, product_id, count(order_id)
+as total_orders, round(sum(price * quantity), 2) as total_revenue
+from coffee1 group by year, month, product_id), rankedmonthlyproducts as
+(select *, rank() over (partition by year, month order by total_orders desc,
+total_revenue desc) as monthly_rank from monthlyproductperformance) select
+year, month, product_id, total_orders, total_revenue from rankedmonthlyproducts
+where monthly_rank = 1 order by year, month
+
+
+
+with store3quarterlyperformance as (select store_id,
+quarter(order_date) as quarter, product_id, count(order_id)
+as total_orders, round(sum(price * quantity), 2) as total_revenue
+from coffee1 where store_id = 8 group by store_id, quarter, product_id),
+rankedquarterlyproducts as (select *, rank() over (partition by quarter
+order by total_orders desc, total_revenue desc) as quarter_rank from
+store3quarterlyperformance) select store_id, quarter, product_id,
+total_orders, total_revenue from rankedquarterlyproducts where
+quarter_rank = 1 order by quarter
+
+
+select  type, count(order_id) total_order,
+round(sum(price*quantity),2) total_revenue
+from coffee1
+group by type
+order by total_revenue desc
+
+
+
+
+with sales_by_period_type as (select store_id,
+case
+when hour(`time`) between 6 and 12 then 'Morning'
+when hour(`time`) between 13 and 20 then 'Evening'
+end as time_period, type,count(order_id) as total_orders
+from coffee1 where store_id =8 and hour(`time`) between 6 and 20
+group by store_id, time_period, type),ranked_types 
+as (select *,rank() over (partition by store_id, time_period
+order by total_orders desc) as category_rank from
+sales_by_period_type)select store_id, time_period,type,
+total_orders from ranked_types where category_rank <= 2
+and time_period is not null order by store_id,case time_period 
+when 'morning_shift' then 1 else 2 end,total_orders desc
+
+
+
+
+with quarterly_type_performance as (select
+quarter(order_date) as quarter,type,
+count(order_id) as total_orders from
+coffee1 group by quarter, type),ranked_types
+as (select *,rank() over (partition by quarter
+order by total_orders desc) as type_rank from
+quarterly_type_performance)select quarter,type,
+total_orders from ranked_types where type_rank <= 3
+order by quarter,total_orders desc
+
+
+
+
+
+select details, product_id,count(order_id) total_order,
+round(sum(price*quantity),2) total_revenue
+from coffee1
+group by product_id, details
+order by total_revenue desc
+
+
+
+with seasonal_sales as (select type,
+case when month(order_date) in (6, 7, 8) then 'summer'
+when month(order_date) in (1, 2, 12) then 'winter'
+else 'shoulder'end as season,count(order_id) as total_orders
+from coffee1 where year(order_date) = 2023
+and location in ('lower manhattan', 'hell''s kitchen', 'astoria')
+group by type, season),ranked_products as (select*,rank() over (
+partition by season order by total_orders desc) as type_rank
+from seasonal_sales)select season,type,total_orders
+from ranked_products where type_rank <= 3 
+order by case season when 'summer' then 1 
+when 'winter' then 2 else 3 end,total_orders desc
+
+
+
+
+
